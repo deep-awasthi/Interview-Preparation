@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview-Preparation</title>
+    <meta name="description" content="Track your interview preparation across LLD, HLD, Java, and DSA with Trello-style boards.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- ====== LOGIN SCREEN ====== -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <div class="login-logo">
+                <span class="login-logo-icon">📋</span>
+                <h1 class="login-title">Interview-Preparation</h1>
+                <p class="login-subtitle">Track your progress. Ace the interview.</p>
+            </div>
+            <div class="login-form">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="loginUsername" class="input-field" placeholder="e.g. deepawasthi" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Passphrase</label>
+                    <input type="password" id="loginPassphrase" class="input-field" placeholder="Your secret passphrase" autocomplete="current-password">
+                </div>
+                <p class="login-hint">First time? Just enter a username &amp; passphrase to create your account.</p>
+                <button class="btn btn-dark btn-full" id="btnLogin" onclick="handleLogin()">Continue →</button>
+                <div class="login-error" id="loginError"></div>
+            </div>
+            <div class="login-footer">
+                <button class="btn btn-link" onclick="toggleSyncSetup()">⚙ Configure Cloud Sync</button>
+            </div>
+            <!-- Firebase Config (collapsible) -->
+            <div class="sync-setup" id="syncSetup" style="display:none;">
+                <p class="sync-info">Paste your Firebase config JSON to enable cross-device sync. <a href="https://console.firebase.google.com" target="_blank" rel="noopener">Create a free project →</a></p>
+                <textarea id="firebaseConfigInput" class="input-field textarea-sm" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+                <button class="btn btn-dark btn-sm" onclick="saveFirebaseConfig()">Save Config</button>
+                <p class="sync-status" id="syncStatus"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== MAIN APP ====== -->
+    <div class="app" id="app" style="display:none;">
+
+        <!-- Top Navigation Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-logo">📋</span>
+                <span class="topbar-title">Interview-Preparation</span>
+            </div>
+            <nav class="topbar-nav">
+                <button class="nav-tab active" data-view="board" onclick="switchView('board', this)">Board</button>
+                <button class="nav-tab" data-view="todo" onclick="switchView('todo', this)">Todo</button>
+                <button class="nav-tab" data-view="reminders" onclick="switchView('reminders', this)">Reminders</button>
+                <button class="nav-tab" data-view="settings" onclick="switchView('settings', this)">Settings</button>
+            </nav>
+            <div class="topbar-right">
+                <span class="streak-badge" id="streakBadge" title="Preparation streak">🔥 <span id="streakNum">0</span></span>
+                <span class="user-badge" id="userBadge">U</span>
+                <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Logout</button>
+            </div>
+        </header>
+
+        <!-- ====== BOARD VIEW ====== -->
+        <div class="view active" id="view-board">
+            <!-- Section Selector Bar -->
+            <div class="section-bar">
+                <button class="section-btn active" data-section="overview" onclick="switchSection('overview', this)">Overview</button>
+                <button class="section-btn" data-section="lld" onclick="switchSection('lld', this)">LLD</button>
+                <button class="section-btn" data-section="hld" onclick="switchSection('hld', this)">HLD</button>
+                <button class="section-btn" data-section="java" onclick="switchSection('java', this)">Java</button>
+                <button class="section-btn" data-section="dsa" onclick="switchSection('dsa', this)">DSA</button>
+            </div>
+
+            <!-- Overview Board -->
+            <div class="board" id="board-overview">
+                <!-- Rendered by JS -->
+            </div>
+
+            <!-- Section Boards (LLD, HLD, Java, DSA) -->
+            <div class="board section-board" id="board-lld" style="display:none;"></div>
+            <div class="board section-board" id="board-hld" style="display:none;"></div>
+            <div class="board section-board" id="board-java" style="display:none;"></div>
+            <div class="board section-board" id="board-dsa" style="display:none;"></div>
+        </div>
+
+        <!-- ====== TODO VIEW ====== -->
+        <div class="view" id="view-todo">
+            <div class="view-header">
+                <h2>Todo List</h2>
+                <button class="btn btn-dark" onclick="openTodoModal()">+ Add Task</button>
+            </div>
+            <div class="todo-filters">
+                <button class="filter-btn active" data-filter="all" onclick="filterTodos('all', this)">All</button>
+                <button class="filter-btn" data-filter="pending" onclick="filterTodos('pending', this)">Pending</button>
+                <button class="filter-btn" data-filter="today" onclick="filterTodos('today', this)">Today</button>
+                <button class="filter-btn" data-filter="overdue" onclick="filterTodos('overdue', this)">Overdue</button>
+                <button class="filter-btn" data-filter="done" onclick="filterTodos('done', this)">Done</button>
+            </div>
+            <div class="todo-list" id="todoList"></div>
+        </div>
+
+        <!-- ====== REMINDERS VIEW ====== -->
+        <div class="view" id="view-reminders">
+            <div class="view-header">
+                <h2>Reminders</h2>
+            </div>
+            <div class="reminders-grid">
+                <div class="card">
+                    <h3 class="card-heading">Daily Notifications</h3>
+                    <div class="setting-row">
+                        <span>Enable browser notifications</span>
+                        <button class="btn btn-outline btn-sm" id="btnNotifPermission" onclick="requestNotifPermission()">Enable</button>
+                    </div>
+                    <div class="setting-row">
+                        <span>Daily reminder</span>
+                        <label class="toggle"><input type="checkbox" id="toggleDailyReminder" onchange="toggleDaily()"><span class="toggle-track"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <span>Reminder time</span>
+                        <input type="time" id="reminderTimeInput" class="input-sm" value="09:00" onchange="updateReminderTime()">
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-heading">Today's Motivation</h3>
+                    <blockquote class="quote-block" id="quoteBlock">"The only way to do great work is to love what you do."</blockquote>
+                    <button class="btn btn-ghost btn-sm" onclick="newQuote()">↻ New Quote</button>
+                </div>
+                <div class="card" style="grid-column: 1 / -1;">
+                    <h3 class="card-heading">Custom Reminders</h3>
+                    <div class="inline-form">
+                        <input type="text" id="customRemText" class="input-field" placeholder="Reminder message...">
+                        <input type="datetime-local" id="customRemDate" class="input-field">
+                        <button class="btn btn-dark btn-sm" onclick="addCustomReminder()">Add</button>
+                    </div>
+                    <div id="customRemList" class="custom-rem-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== SETTINGS VIEW ====== -->
+        <div class="view" id="view-settings">
+            <div class="view-header">
+                <h2>Settings</h2>
+            </div>
+            <div class="settings-grid">
+                <div class="card">
+                    <h3 class="card-heading">User Profile</h3>
+                    <div class="setting-row">
+                        <span>Username</span>
+                        <strong id="settingsUsername">—</strong>
+                    </div>
+                    <div class="setting-row">
+                        <span>Sync Status</span>
+                        <span id="settingsSyncStatus" class="sync-label">Local Only</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-heading">Cloud Sync (Firebase)</h3>
+                    <p class="text-muted">Connect Firebase for cross-device sync. Create a free project at <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a></p>
+                    <ol class="setup-steps">
+                        <li>Create a Firebase project (free Spark plan)</li>
+                        <li>Go to Project Settings → General → Your apps → Web app</li>
+                        <li>Copy the <code>firebaseConfig</code> object</li>
+                        <li>Enable <strong>Firestore Database</strong> in test mode</li>
+                        <li>Paste the config below</li>
+                    </ol>
+                    <textarea id="settingsFirebaseConfig" class="input-field textarea-sm" placeholder="Paste Firebase config JSON..."></textarea>
+                    <div class="btn-row">
+                        <button class="btn btn-dark btn-sm" onclick="saveFirebaseConfigFromSettings()">Save & Connect</button>
+                        <button class="btn btn-ghost btn-sm" onclick="disconnectFirebase()">Disconnect</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-heading">Data</h3>
+                    <div class="btn-row">
+                        <button class="btn btn-outline btn-sm" onclick="exportData()">⬇ Export JSON</button>
+                        <label class="btn btn-outline btn-sm" style="cursor:pointer;">⬆ Import JSON<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
+                        <button class="btn btn-danger btn-sm" onclick="clearAllData()">🗑 Clear All Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== CARD DETAIL MODAL ====== -->
+    <div class="modal-overlay" id="cardDetailModal">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3 id="cardDetailTitle" class="modal-title">Topic</h3>
+                <div class="modal-header-actions">
+                    <select id="cardDetailStatus" class="input-sm" onchange="updateCardStatus()">
+                        <option value="not-started">Not Started</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="revision">Needs Revision</option>
+                    </select>
+                    <button class="btn-icon" onclick="closeModal('cardDetailModal')">✕</button>
+                </div>
+            </div>
+            <div class="modal-body card-detail-body">
+                <!-- Links Section -->
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <h4>🔗 Links</h4>
+                        <button class="btn btn-ghost btn-xs" onclick="addLinkInline()">+ Add</button>
+                    </div>
+                    <div id="cardLinks" class="detail-items"></div>
+                    <div class="inline-add" id="addLinkForm" style="display:none;">
+                        <input type="text" id="inlineLinkTitle" class="input-field input-sm" placeholder="Title">
+                        <input type="url" id="inlineLinkUrl" class="input-field input-sm" placeholder="https://...">
+                        <select id="inlineLinkCat" class="input-sm">
+                            <option value="article">📄 Article</option>
+                            <option value="video">🎬 Video</option>
+                            <option value="course">📚 Course</option>
+                            <option value="docs">📖 Docs</option>
+                            <option value="practice">💡 Practice</option>
+                        </select>
+                        <button class="btn btn-dark btn-xs" onclick="saveLinkInline()">Save</button>
+                        <button class="btn btn-ghost btn-xs" onclick="cancelLinkInline()">Cancel</button>
+                    </div>
+                </div>
+                <!-- Notes Section -->
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <h4>📝 Notes</h4>
+                        <button class="btn btn-ghost btn-xs" onclick="addNoteInline()">+ Add</button>
+                    </div>
+                    <div id="cardNotes" class="detail-items"></div>
+                    <div class="inline-add" id="addNoteForm" style="display:none;">
+                        <input type="text" id="inlineNoteTitle" class="input-field input-sm" placeholder="Note title">
+                        <textarea id="inlineNoteContent" class="input-field textarea-sm" placeholder="Write your notes..."></textarea>
+                        <button class="btn btn-dark btn-xs" onclick="saveNoteInline()">Save</button>
+                        <button class="btn btn-ghost btn-xs" onclick="cancelNoteInline()">Cancel</button>
+                    </div>
+                </div>
+                <!-- Code/Design Docs Section -->
+                <div class="detail-section">
+                    <div class="detail-section-header">
+                        <h4>💻 Code Snippets / Design Docs</h4>
+                        <button class="btn btn-ghost btn-xs" onclick="addSnippetInline()">+ Add</button>
+                    </div>
+                    <div id="cardSnippets" class="detail-items"></div>
+                    <div class="inline-add" id="addSnippetForm" style="display:none;">
+                        <input type="text" id="inlineSnippetTitle" class="input-field input-sm" placeholder="Title">
+                        <select id="inlineSnippetType" class="input-sm">
+                            <option value="code">💻 Code</option>
+                            <option value="design-doc">📐 Design Doc</option>
+                        </select>
+                        <textarea id="inlineSnippetContent" class="input-field textarea-code" placeholder="Paste code or write document..."></textarea>
+                        <button class="btn btn-dark btn-xs" onclick="saveSnippetInline()">Save</button>
+                        <button class="btn btn-ghost btn-xs" onclick="cancelSnippetInline()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== ADD TOPIC MODAL ====== -->
+    <div class="modal-overlay" id="addTopicModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Topic</h3>
+                <button class="btn-icon" onclick="closeModal('addTopicModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Topic Name</label>
+                    <input type="text" id="newTopicName" class="input-field" placeholder="e.g. Singleton Pattern">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select id="newTopicPriority" class="input-field">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('addTopicModal')">Cancel</button>
+                <button class="btn btn-dark" onclick="saveNewTopic()">Add Topic</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== ADD TODO MODAL ====== -->
+    <div class="modal-overlay" id="addTodoModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="todoModalTitle">Add Task</h3>
+                <button class="btn-icon" onclick="closeModal('addTodoModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Task</label>
+                    <input type="text" id="todoText" class="input-field" placeholder="e.g. Revise Binary Trees">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select id="todoCategory" class="input-field">
+                            <option value="lld">LLD</option>
+                            <option value="hld">HLD</option>
+                            <option value="java">Java</option>
+                            <option value="dsa">DSA</option>
+                            <option value="general" selected>General</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Due Date</label>
+                        <input type="date" id="todoDueDate" class="input-field">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select id="todoPriority" class="input-field">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('addTodoModal')">Cancel</button>
+                <button class="btn btn-dark" onclick="saveTodo()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== VIEW CONTENT MODAL ====== -->
+    <div class="modal-overlay" id="viewContentModal">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3 class="modal-title" id="viewContentTitle">Content</h3>
+                <div class="modal-header-actions">
+                    <button class="btn btn-ghost btn-xs" id="btnCopyContent" onclick="copyViewContent()">📋 Copy</button>
+                    <button class="btn-icon" onclick="closeModal('viewContentModal')">✕</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <pre class="content-viewer" id="viewContentBody"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Firebase SDK (loaded lazily when configured) -->
+    <script src="app.js"></script>
+</body>
+</html>
