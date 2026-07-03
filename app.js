@@ -42,6 +42,22 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2,
 const todayKey = () => new Date().toISOString().split('T')[0];
 const escHtml = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
 
+function normalizeUrl(value) {
+    const raw = (value || '').trim();
+    if (!raw) return null;
+
+    const hasProtocol = /^[a-z][a-z\d+\-.]*:/i.test(raw);
+    const candidate = hasProtocol ? raw : `https://${raw}`;
+
+    try {
+        const url = new URL(candidate);
+        if (!['http:', 'https:'].includes(url.protocol)) return null;
+        return url.href;
+    } catch {
+        return null;
+    }
+}
+
 function fmtDate(d) {
     if (!d) return '';
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -622,19 +638,28 @@ function renderCardLinks() {
         container.innerHTML = '<p style="font-size:12px;color:#8993a4;">No links yet</p>';
         return;
     }
-    container.innerHTML = topic.links.map((link, i) => `
+    container.innerHTML = topic.links.map((link, i) => {
+        const safeUrl = normalizeUrl(link.url);
+        return `
         <div class="detail-item">
             <span class="detail-item-icon">${CATEGORY_ICONS[link.category] || '🔗'}</span>
             <div class="detail-item-body">
                 <div class="detail-item-title">${escHtml(link.title)}</div>
-                <a class="detail-item-sub" href="${escHtml(link.url)}" target="_blank" rel="noopener">${escHtml(link.url)}</a>
+                <a class="detail-item-sub" href="${escHtml(safeUrl || '#')}" target="_blank" rel="noopener">${escHtml(link.url)}</a>
             </div>
             <div class="detail-item-actions">
-                <button class="btn-icon" onclick="window.open('${escHtml(link.url)}', '_blank')" title="Open">↗</button>
+                <button class="btn-icon" onclick="openSavedLink(${i})" title="Open" ${safeUrl ? '' : 'disabled'}>↗</button>
                 <button class="btn-icon" onclick="deleteLink(${i})" title="Delete">✕</button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
+}
+
+function openSavedLink(i) {
+    const topic = getActiveTopic();
+    const url = topic?.links?.[i] ? normalizeUrl(topic.links[i].url) : null;
+    if (!url) { toast('Invalid link URL'); return; }
+    window.open(url, '_blank', 'noopener');
 }
 
 function addLinkInline() { $('addLinkForm').style.display = 'flex'; $('inlineLinkTitle').focus(); }
@@ -644,9 +669,9 @@ function saveLinkInline() {
     const topic = getActiveTopic();
     if (!topic) return;
     const title = $('inlineLinkTitle').value.trim();
-    const url = $('inlineLinkUrl').value.trim();
+    const url = normalizeUrl($('inlineLinkUrl').value);
     const cat = $('inlineLinkCat').value;
-    if (!title || !url) { toast('Fill in title and URL'); return; }
+    if (!title || !url) { toast('Enter a title and valid http(s) URL'); return; }
 
     if (!topic.links) topic.links = [];
     topic.links.push({ id: uid(), title, url, category: cat, createdAt: new Date().toISOString() });
