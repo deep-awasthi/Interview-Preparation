@@ -1,0 +1,18 @@
+site_name: Aether Object Storage
+site_description: Production-quality, S3-compatible Object Storage Server in Python using Django.
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: cyan
+  features:
+    - navigation.expand
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Overview: index.md
+  - Architecture: architecture.md
+  - S3 API Reference: api_reference.md
+  - SDK Integration Guide: boto3_guide.md

@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aether_postgres
+    environment:
+      POSTGRES_DB: aether_db
+      POSTGRES_USER: aether_user
+      POSTGRES_PASSWORD: aether_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aether_user -d aether_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: aether_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  django:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: aether_api
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ../:/app
+      - aether_storage:/app/storage_data
+    environment:
+      POSTGRES_DB: aether_db
+      POSTGRES_USER: aether_user
+      POSTGRES_PASSWORD: aether_password
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      STORAGE_DRIVER: filesystem
+      STORAGE_ROOT: /app/storage_data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  celery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: aether_celery
+    command: celery -A aether.config worker -l info
+    volumes:
+      - ../:/app
+      - aether_storage:/app/storage_data
+    environment:
+      POSTGRES_DB: aether_db
+      POSTGRES_USER: aether_user
+      POSTGRES_PASSWORD: aether_password
+      POSTGRES_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      STORAGE_ROOT: /app/storage_data
+    depends_on:
+      - django
+
+  celery-beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: aether_celery_beat
+    command: celery -A aether.config beat -l info
+    volumes:
+      - ../:/app
+    environment:
+      POSTGRES_DB: aether_db
+      POSTGRES_USER: aether_user
+      POSTGRES_PASSWORD: aether_password
+      POSTGRES_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - celery
+
+  nginx:
+    image: nginx:alpine
+    container_name: aether_nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - django
+
+volumes:
+  postgres_data:
+  aether_storage:
